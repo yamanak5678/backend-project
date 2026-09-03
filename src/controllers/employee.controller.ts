@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-
 import type { AuthRequest } from "../middleware/auth.middleware.js";
 
 import {
@@ -14,14 +13,20 @@ import {
     getEmployeeStatuses as getEmployeeStatusesService,
     deleteEmployeeStatus as deleteEmployeeStatusService,
     updateEmployeeByUserId as updateEmployeeByUserIdService,
-    getMyCurrentStatus as getMyCurrentStatusService
+    getMyCurrentStatus as getMyCurrentStatusService,
+    updateMyStatus as updateMyStatusService,
+    updateEmployeeStatus as updateEmployeeStatusService,
+    deleteMyStatus as deleteMyStatusService,
 } from "../services/employee.service.js";
+
 import {
     validateEmployee,
     validateUpdateEmployee
 } from "../validations/employee.validation.js";
 
+
 // GET all employees
+
 export const getAllEmployees = async (
     req: Request,
     res: Response
@@ -29,11 +34,12 @@ export const getAllEmployees = async (
     try {
         const employees = await getAllEmployeesService();
 
-        res.json(employees);
+        return res.json(employees);
+
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to fetch employees"
         });
     }
@@ -41,6 +47,7 @@ export const getAllEmployees = async (
 
 
 // GET employee by ID
+
 export const getEmployeeByIdController = async (
     req: Request,
     res: Response
@@ -56,16 +63,20 @@ export const getEmployeeByIdController = async (
             });
         }
 
-        res.json(employee);
+        return res.json(employee);
+
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to fetch employee"
         });
     }
 };
+
+
 // CREATE employee
+
 export const createEmployeeController = async (
     req: Request,
     res: Response
@@ -80,19 +91,23 @@ export const createEmployeeController = async (
             });
         }
 
-        const newEmployee = await createEmployeeService(req.body);
+        const newEmployee =
+            await createEmployeeService(req.body);
 
-        res.status(201).json(newEmployee);
+        return res.status(201).json(newEmployee);
 
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to create employee"
         });
     }
 };
+
+
 // UPDATE employee
+
 export const updateEmployeeController = async (
     req: Request,
     res: Response
@@ -100,8 +115,7 @@ export const updateEmployeeController = async (
     try {
         const id = Number(req.params.id);
 
-        // Validate update data
-        const errors = validateUpdateEmployee(req.body);(req.body);
+        const errors = validateUpdateEmployee(req.body);
 
         if (errors.length > 0) {
             return res.status(400).json({
@@ -110,10 +124,8 @@ export const updateEmployeeController = async (
             });
         }
 
-        const updatedEmployee = await updateEmployeeService(
-            id,
-            req.body
-        );
+        const updatedEmployee =
+            await updateEmployeeService(id, req.body);
 
         if (!updatedEmployee) {
             return res.status(404).json({
@@ -121,17 +133,20 @@ export const updateEmployeeController = async (
             });
         }
 
-        res.json(updatedEmployee);
+        return res.json(updatedEmployee);
 
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to update employee"
         });
     }
 };
+
+
 // DELETE employee
+
 export const deleteEmployeeController = async (
     req: Request,
     res: Response
@@ -139,7 +154,8 @@ export const deleteEmployeeController = async (
     try {
         const id = Number(req.params.id);
 
-        const deletedEmployee = await deleteEmployeeService(id);
+        const deletedEmployee =
+            await deleteEmployeeService(id);
 
         if (!deletedEmployee) {
             return res.status(404).json({
@@ -147,19 +163,23 @@ export const deleteEmployeeController = async (
             });
         }
 
-        res.json({
+        return res.json({
             message: "Employee deleted successfully",
             employee: deletedEmployee
         });
+
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to delete employee"
         });
     }
 };
+
+
 // PATCH employee status
+
 export const toggleEmployeeStatusController = async (
     req: Request,
     res: Response
@@ -167,7 +187,8 @@ export const toggleEmployeeStatusController = async (
     try {
         const id = Number(req.params.id);
 
-        const employee = await getEmployeeByIdService(id);
+        const employee =
+            await getEmployeeByIdService(id);
 
         if (!employee) {
             return res.status(404).json({
@@ -175,37 +196,45 @@ export const toggleEmployeeStatusController = async (
             });
         }
 
-        const status = await toggleEmployeeStatusService(id);
+        const status =
+            await toggleEmployeeStatusService(id);
 
-        res.json(status);
+        return res.json(status);
 
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to update employee status"
         });
     }
 };
+
+
 // GET all employee statuses
+
 export const getAllEmployeeStatusesController = async (
     req: Request,
     res: Response
 ) => {
     try {
-        const statuses = await getAllEmployeeStatusesService();
+        const statuses =
+            await getAllEmployeeStatusesService();
 
-        res.json(statuses);
+        return res.json(statuses);
 
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to fetch employee statuses"
         });
     }
 };
+
+
 // GET statuses for specific employee
+
 export const getEmployeeStatusesController = async (
     req: Request,
     res: Response
@@ -213,7 +242,8 @@ export const getEmployeeStatusesController = async (
     try {
         const id = Number(req.params.id);
 
-        const employee = await getEmployeeByIdService(id);
+        const employee =
+            await getEmployeeByIdService(id);
 
         if (!employee) {
             return res.status(404).json({
@@ -221,19 +251,23 @@ export const getEmployeeStatusesController = async (
             });
         }
 
-        const statuses = await getEmployeeStatusesService(id);
+        const statuses =
+            await getEmployeeStatusesService(id);
 
-        res.json(statuses);
+        return res.json(statuses);
 
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to fetch employee statuses"
         });
     }
 };
+
+
 // DELETE specific employee status
+
 export const deleteEmployeeStatusController = async (
     req: Request,
     res: Response
@@ -250,7 +284,7 @@ export const deleteEmployeeStatusController = async (
             });
         }
 
-        res.json({
+        return res.json({
             message: "Employee status deleted successfully",
             status: deletedStatus
         });
@@ -258,26 +292,30 @@ export const deleteEmployeeStatusController = async (
     } catch (error) {
         console.error(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to delete employee status"
         });
     }
 };
+
+
+// GET logged-in user's profile
+
 export const getMyProfileController = async (
     req: AuthRequest,
     res: Response
 ) => {
     try {
-
         if (!req.user) {
             return res.status(401).json({
                 message: "Authentication required"
             });
         }
 
-        const employee = await getEmployeeByUserIdService(
-            req.user.userId
-        );
+        const employee =
+            await getEmployeeByUserIdService(
+                req.user.userId
+            );
 
         if (!employee) {
             return res.status(404).json({
@@ -288,7 +326,6 @@ export const getMyProfileController = async (
         return res.json(employee);
 
     } catch (error) {
-
         console.error(error);
 
         return res.status(500).json({
@@ -296,6 +333,10 @@ export const getMyProfileController = async (
         });
     }
 };
+
+
+// GET logged-in user's current status
+
 export const getMyCurrentStatusController = async (
     req: AuthRequest,
     res: Response
@@ -307,9 +348,10 @@ export const getMyCurrentStatusController = async (
             });
         }
 
-        const status = await getMyCurrentStatusService(
-            req.user.userId
-        );
+        const status =
+            await getMyCurrentStatusService(
+                req.user.userId
+            );
 
         if (!status) {
             return res.status(404).json({
@@ -328,12 +370,18 @@ export const getMyCurrentStatusController = async (
     }
 };
 
+
+// UPDATE logged-in user's status
+
+
+
+// UPDATE logged-in user's profile
+
 export const updateMyProfileController = async (
     req: AuthRequest,
     res: Response
 ) => {
     try {
-
         if (!req.user) {
             return res.status(401).json({
                 message: "Authentication required"
@@ -379,11 +427,238 @@ export const updateMyProfileController = async (
         return res.json(updatedEmployee);
 
     } catch (error) {
-
         console.error(error);
 
         return res.status(500).json({
             message: "Failed to update profile"
+        });
+    }
+};
+export const updateMyStatusController = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+
+        const statusId = Number(req.params.statusId);
+
+        if (isNaN(statusId)) {
+            return res.status(400).json({
+                message: "Invalid statusId"
+            });
+        }
+
+        const { status, description } = req.body;
+
+        if (!status || !description) {
+            return res.status(400).json({
+                message: "Status and description are required"
+            });
+        }
+
+        const updatedStatus = await updateEmployeeStatusService(
+            req.user.userId,
+            statusId,
+            status,
+            description
+        );
+
+        if (!updatedStatus) {
+            return res.status(404).json({
+                message: "Status not found"
+            });
+        }
+
+        return res.json(updatedStatus);
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to update employee status"
+        });
+    }
+};
+// CREATE logged-in user's status
+
+export const createMyStatusController = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+
+        const { status, description } = req.body;
+
+        if (!status || !description) {
+            return res.status(400).json({
+                message: "Status and description are required"
+            });
+        }
+
+        const newStatus = await updateMyStatusService(
+            req.user.userId,
+            status,
+            description
+        );
+
+        if (!newStatus) {
+            return res.status(404).json({
+                message: "Employee profile not found"
+            });
+        }
+
+        return res.status(201).json(newStatus);
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to create employee status"
+        });
+    }
+};
+
+// GET logged-in user's status history
+
+export const getMyStatusHistoryController = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+
+        const employee = await getEmployeeByUserIdService(
+            req.user.userId
+        );
+
+        if (!employee) {
+            return res.status(404).json({
+                message: "Employee profile not found"
+            });
+        }
+
+        const statuses = await getEmployeeStatusesService(
+            Number(employee.EmployeeId)
+        );
+
+        return res.json(statuses);
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to get status history"
+        });
+    }
+};
+// UPDATE logged-in user's own status
+
+export const updateMyStatusByIdController = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+
+        const statusId = Number(req.params.statusId);
+
+        if (isNaN(statusId)) {
+            return res.status(400).json({
+                message: "Invalid statusId"
+            });
+        }
+
+        const { status, description } = req.body;
+
+        if (!status || !description) {
+            return res.status(400).json({
+                message: "Status and description are required"
+            });
+        }
+
+        const updatedStatus = await updateEmployeeStatusService(
+            req.user.userId,
+            statusId,
+            status,
+            description
+        );
+
+        if (!updatedStatus) {
+            return res.status(404).json({
+                message: "Status not found"
+            });
+        }
+
+        return res.json(updatedStatus);
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to update status"
+        });
+    }
+};
+// DELETE logged-in user's own status
+
+export const deleteMyStatusController = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+
+        const statusId = Number(req.params.statusId);
+
+        if (isNaN(statusId)) {
+            return res.status(400).json({
+                message: "Invalid statusId"
+            });
+        }
+
+        const deletedStatus = await deleteMyStatusService(
+            req.user.userId,
+            statusId
+        );
+
+        if (!deletedStatus) {
+            return res.status(404).json({
+                message: "Status not found"
+            });
+        }
+
+        return res.json({
+            message: "Status deleted successfully",
+            status: deletedStatus
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to delete status"
         });
     }
 };

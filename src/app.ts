@@ -7,8 +7,16 @@ const app = express();
 
 app.use(express.json());
 
-app.use("/api/v1/admin", employeeRoutes);
+app.use("/api/v1", employeeRoutes);
 app.use("/api/v1/auth", authRoutes);
+
+// Health Check
+app.get("/api/v1/health", (req, res) => {
+    res.json({
+        status: "OK",
+        message: "API is healthy"
+    });
+});
 
 app.get("/", (req, res) => {
     res.json({

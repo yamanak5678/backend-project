@@ -2,7 +2,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import {
-    getUserByEmail as getUserByEmailRepository
+    getUserByEmail as getUserByEmailRepository,
+    getUserByUserId as getUserByUserIdRepository,
+    updateUserPassword as updateUserPasswordRepository
 } from "../repositories/auth.repository.js";
 
 import {
@@ -118,4 +120,36 @@ export const logout = async (
     return {
         message: "Logout successful"
     };
+};
+export const changePassword = async (
+    userId: number,
+    currentPassword: string,
+    newPassword: string
+) => {
+    const user = await getUserByUserIdRepository(userId);
+
+    if (!user) {
+        throw new Error("User not found");
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+        currentPassword,
+        user.PasswordHash
+    );
+
+    if (!isPasswordValid) {
+        throw new Error("Current password is incorrect");
+    }
+
+    const newPasswordHash = await bcrypt.hash(
+        newPassword,
+        10
+    );
+
+    const updatedUser = await updateUserPasswordRepository(
+        userId,
+        newPasswordHash
+    );
+
+    return updatedUser;
 };

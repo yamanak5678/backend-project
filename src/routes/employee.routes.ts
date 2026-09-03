@@ -11,10 +11,14 @@ import {
     getEmployeeStatusesController,
     deleteEmployeeStatusController,
     getMyProfileController,
-    updateMyProfileController
+    updateMyProfileController,
+    createMyStatusController,
+    getMyStatusHistoryController,
+    updateMyStatusByIdController,
+    deleteMyStatusController,
+    
 } from "../controllers/employee.controller.js";
 
-// 🔐 Middleware imports
 import {
     authenticateToken
 } from "../middleware/auth.middleware.js";
@@ -23,100 +27,147 @@ import {
     requireAdmin
 } from "../middleware/admin.middleware.js";
 
+import { changePasswordController } 
+from "../controllers/auth.controller.js";
+
 const router = express.Router();
 
 
+// ===============================
+// ADMIN - EMPLOYEE MANAGEMENT
+// ===============================
+
 // GET all employees
 router.get(
-    "/employees",
+    "/admin/employees",
     authenticateToken,
     requireAdmin,
     getAllEmployees
 );
 
-// Get logged-in user's profile
-router.get(
-    "/employees/me",
-    authenticateToken,
-    getMyProfileController
-);
-
 // GET employee by ID
 router.get(
-    "/employees/:id",
+    "/admin/employees/:id",
     authenticateToken,
     requireAdmin,
     getEmployeeByIdController
 );
 
-// Update logged-in user's profile
-router.put(
-    "/employees/me",
-    authenticateToken,
-    updateMyProfileController
-);
-
 // CREATE employee
 router.post(
-    "/employees",
+    "/admin/employees",
     authenticateToken,
     requireAdmin,
     createEmployeeController
 );
 
-
 // UPDATE employee
 router.put(
-    "/employees/:id",
+    "/admin/employees/:id",
     authenticateToken,
     requireAdmin,
     updateEmployeeController
 );
 
-
 // DELETE employee
 router.delete(
-    "/employees/:id",
+    "/admin/employees/:id",
     authenticateToken,
     requireAdmin,
     deleteEmployeeController
 );
 
-
-// GET all employee statuses
-router.get(
-    "/statuses",
-    authenticateToken,
-    requireAdmin,
-    getAllEmployeeStatusesController
-);
-
-
 // TOGGLE employee status
 router.patch(
-    "/employees/:id/status",
+    "/admin/employees/:id/status",
     authenticateToken,
     requireAdmin,
     toggleEmployeeStatusController
 );
 
 
+// ===============================
+// ADMIN - STATUS OVERSIGHT
+// ===============================
+
+// GET all employee statuses
+router.get(
+    "/admin/statuses",
+    authenticateToken,
+    requireAdmin,
+    getAllEmployeeStatusesController
+);
+
 // GET statuses for specific employee
 router.get(
-    "/employees/:id/statuses",
+    "/admin/employees/:id/statuses",
     authenticateToken,
     requireAdmin,
     getEmployeeStatusesController
 );
 
-
-// DELETE specific employee status
+// DELETE specific status
 router.delete(
-    "/statuses/:statusId",
+    "/admin/statuses/:statusId",
     authenticateToken,
     requireAdmin,
     deleteEmployeeStatusController
 );
 
 
+// ===============================
+// EMPLOYEE - PROFILE
+// ===============================
+
+// GET own profile
+router.get(
+    "/employees/me",
+    authenticateToken,
+    getMyProfileController
+);
+
+// UPDATE own profile
+router.put(
+    "/employees/me",
+    authenticateToken,
+    updateMyProfileController
+);
+
+
+// ===============================
+// EMPLOYEE - STATUS
+// ===============================
+// POST new status
+router.post(
+    "/employees/me/statuses",
+    authenticateToken,
+    createMyStatusController
+);
+
+// GET own status history
+router.get(
+    "/employees/me/statuses",
+    authenticateToken,
+    getMyStatusHistoryController
+);
+
+// UPDATE own status
+router.patch(
+    "/employees/me/statuses/:statusId",
+    authenticateToken,
+    updateMyStatusByIdController
+);
+router.delete(
+    "/employees/me/statuses/:statusId",
+    authenticateToken,
+    deleteMyStatusController
+);
+
+// CHANGE PASSWORD
+
+router.patch(
+    "/employees/me/password",
+    authenticateToken,
+    changePasswordController
+);
 export default router;

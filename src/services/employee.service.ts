@@ -6,13 +6,12 @@ import {
     updateEmployee as updateEmployeeRepository,
     deleteEmployee as deleteEmployeeRepository,
     updateEmployeeByUserId as updateEmployeeByUserIdRepository,
-
     getCurrentEmployeeStatus as getCurrentEmployeeStatusRepository,
     createEmployeeStatus as createEmployeeStatusRepository,
     getAllEmployeeStatuses as getAllEmployeeStatusesRepository,
     getEmployeeStatuses as getEmployeeStatusesRepository,
-    deleteEmployeeStatus as deleteEmployeeStatusRepository
-
+    deleteEmployeeStatus as deleteEmployeeStatusRepository,
+    updateEmployeeStatus as updateEmployeeStatusRepository
 } from "../repositories/employee.repository.js";
 
 export const getAllEmployees = async () => {
@@ -146,4 +145,60 @@ export const getMyCurrentStatus = async (
     );
 
     return status;
+};
+export const updateMyStatus = async (
+    userId: number,
+    status: string,
+    description: string
+) => {
+    const employee = await getEmployeeByUserIdRepository(userId);
+
+    if (!employee) {
+        return null;
+    }
+
+    const updatedStatus = await createEmployeeStatusRepository(
+        Number(employee.EmployeeId),
+        status,
+        description
+    );
+
+    return updatedStatus;
+};
+export const updateEmployeeStatus = async (
+    userId: number,
+    statusId: number,
+    status: string,
+    description: string
+) => {
+    const employee = await getEmployeeByUserIdRepository(userId);
+
+    if (!employee) {
+        return null;
+    }
+
+    const updatedStatus = await updateEmployeeStatusRepository(
+        statusId,
+        Number(employee.EmployeeId),
+        status,
+        description
+    );
+
+    return updatedStatus;
+};
+   export const deleteMyStatus = async (
+    userId: number,
+    statusId: number
+) => {
+    const employee = await getEmployeeByUserIdRepository(userId);
+
+    if (!employee) {
+        return null;
+    }
+
+    const deletedStatus = await deleteEmployeeStatusRepository(
+        statusId
+    );
+
+    return deletedStatus;
 };
