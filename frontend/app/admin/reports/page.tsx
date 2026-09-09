@@ -1,55 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch, apiJson } from "@/lib/api";
 
-const reports = [
-  {
-    id: 1,
-    name: "Rahul Sharma",
-    department: "Development",
-    status: "Active",
-    date: "05 Sep 2026",
-  },
-  {
-    id: 2,
-    name: "Priya Singh",
-    department: "HR",
-    status: "Active",
-    date: "05 Sep 2026",
-  },
-  {
-    id: 3,
-    name: "Amit Kumar",
-    department: "Design",
-    status: "Inactive",
-    date: "05 Sep 2026",
-  },
-  {
-    id: 4,
-    name: "Neha Verma",
-    department: "Development",
-    status: "On Leave",
-    date: "05 Sep 2026",
-  },
-  {
-    id: 5,
-    name: "Vikas Gupta",
-    department: "Marketing",
-    status: "Active",
-    date: "05 Sep 2026",
-  },
-];
+type Employee = { EmployeeId: number; Name?: string; Department?: string };
+type EmployeeStatus = { StatusId: number; EmployeeId: number; Status: string; CreatedAt?: string };
+type Report = { id: number; name: string; department: string; status: string; date: string; dateValue?: string };
 
 export default function ReportsPage() {
   const [search, setSearch] = useState("");
-  const [date, setDate] = useState("2026-09-05");
+  const [date, setDate] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+  const [reports, setReports] = useState<Report[]>([]);
+
+  const loadReports = useCallback(async () => {
+    try {
+      const [employeeData, statusData] = await Promise.all([apiJson<unknown>("/admin/employees"), apiJson<unknown>("/admin/statuses")]);
+      const employees = Array.isArray(employeeData) ? employeeData as Employee[] : [];
+      const statuses = Array.isArray(statusData) ? statusData as EmployeeStatus[] : [];
+      const latest = new Map<number, EmployeeStatus>();
+      for (const item of statuses) if (!latest.has(item.EmployeeId) || item.StatusId > (latest.get(item.EmployeeId)?.StatusId ?? 0)) latest.set(item.EmployeeId, item);
+      setReports(employees.map((employee) => {
+        const item = latest.get(employee.EmployeeId);
+        const dateValue = item?.CreatedAt;
+        return { id: employee.EmployeeId, name: employee.Name ?? "Unknown Employee", department: employee.Department ?? "N/A", status: item?.Status ?? "Inactive", date: dateValue ? new Date(dateValue).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "N/A", dateValue };
+      }));
+    } catch (cause) { setDownloadError(cause instanceof Error ? cause.message : "Failed to load reports."); }
+  }, []);
+  useEffect(() => { const timer = window.setTimeout(() => void loadReports(), 0); return () => window.clearTimeout(timer); }, [loadReports]);
+
+  const downloadReport = async () => {
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      const response = await apiFetch("/admin/reports/statuses");
+      const file = await response.blob();
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "employee-status-report.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      setDownloadError(cause instanceof Error ? cause.message : "Unable to download the report.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const filteredReports = reports.filter((report) =>
-    `${report.name} ${report.department} ${report.status}`
+    (!date || report.dateValue?.startsWith(date)) && `${report.name} ${report.department} ${report.status}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
+  const active = filteredReports.filter((report) => report.status === "Active").length;
+  const inactive = filteredReports.filter((report) => report.status === "Inactive").length;
+  const onLeave = filteredReports.filter((report) => report.status === "On Leave").length;
 
   return (
     <main className="dashboard-page">
@@ -128,11 +138,12 @@ export default function ReportsPage() {
               </p>
             </div>
 
-            <button className="download-report-button">
-              Download Report
+            <button className="download-report-button" type="button" onClick={() => void downloadReport()} disabled={downloading}>
+              {downloading ? "Preparing Report..." : "Download Report"}
             </button>
 
           </div>
+          {downloadError && <p role="alert">{downloadError}</p>}
 
           {/* Filters */}
           <div className="report-filters">
@@ -175,22 +186,22 @@ export default function ReportsPage() {
 
             <div className="report-summary-card">
               <span>Total Employees</span>
-              <strong>5</strong>
+              <strong>{filteredReports.length}</strong>
             </div>
 
             <div className="report-summary-card">
               <span>Active</span>
-              <strong>3</strong>
+              <strong>{active}</strong>
             </div>
 
             <div className="report-summary-card">
               <span>Inactive</span>
-              <strong>1</strong>
+              <strong>{inactive}</strong>
             </div>
 
             <div className="report-summary-card">
               <span>On Leave</span>
-              <strong>1</strong>
+              <strong>{onLeave}</strong>
             </div>
 
           </div>

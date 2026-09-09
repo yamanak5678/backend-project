@@ -2,11 +2,11 @@
   "name": "backend-project",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/server.js",
+  "main": "backend/dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "dev": "tsx watch backend/src/server.ts",
+    "build": "tsc -p backend/tsconfig.json",
+    "start": "node backend/dist/server.js"
   },
   "keywords": [],
   "author": "",

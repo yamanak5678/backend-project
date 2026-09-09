@@ -3205,6 +3205,52 @@ body {
   font-size: 12px;
 }
 
+.today-status-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.today-status-actions button,
+.today-status-edit button {
+  border: 1px solid #10b981;
+  border-radius: 6px;
+  background: white;
+  color: #047857;
+  cursor: pointer;
+  font: inherit;
+  padding: 6px 10px;
+}
+
+.today-status-actions button:last-child {
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.today-status-actions button:disabled,
+.today-status-edit button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.today-status-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.today-status-edit input,
+.today-status-edit select {
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.today-status-edit input {
+  flex: 1 1 220px;
+}
+
 @media (max-width: 900px) {
   .status-options {
     grid-template-columns: 1fr 1fr;

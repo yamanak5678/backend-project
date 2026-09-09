@@ -9,6 +9,7 @@ const app = express();
 const allowedOrigins = new Set([
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.1.3:3000",
 ]);
 
 app.use((req, res, next) => {
@@ -41,17 +42,16 @@ app.use("/api/v1", employeeRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/admin/reports", reportRoutes);
 
-// Health Check
 app.get("/api/v1/health", (req, res) => {
     res.json({
         status: "OK",
-        message: "API is healthy"
+        message: "API is healthy",
     });
 });
 
 app.get("/", (req, res) => {
     res.json({
-        message: "Employee Management API is running"
+        message: "Employee Management API is running",
     });
 });
 

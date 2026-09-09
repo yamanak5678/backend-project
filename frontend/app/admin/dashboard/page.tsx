@@ -1,59 +1,58 @@
-import Link from "next/link";
+"use client";
 
-const employees = [
-  {
-    id: 1,
-    name: "Rahul Sharma",
-    email: "rahul@example.com",
-    department: "Development",
-    status: "Active",
-    date: "01 Sep 2026",
-    initial: "R",
-    avatar: "green",
-  },
-  {
-    id: 2,
-    name: "Priya Singh",
-    email: "priya@example.com",
-    department: "HR",
-    status: "Active",
-    date: "28 Aug 2026",
-    initial: "P",
-    avatar: "pink",
-  },
-  {
-    id: 3,
-    name: "Amit Kumar",
-    email: "amit@example.com",
-    department: "Design",
-    status: "Inactive",
-    date: "25 Aug 2026",
-    initial: "A",
-    avatar: "yellow",
-  },
-  {
-    id: 4,
-    name: "Sneha Verma",
-    email: "sneha@example.com",
-    department: "QA",
-    status: "Active",
-    date: "20 Aug 2026",
-    initial: "S",
-    avatar: "purple",
-  },
-  {
-    id: 5,
-    name: "Vikram Patel",
-    email: "vikram@example.com",
-    department: "Operations",
-    status: "Active",
-    date: "18 Aug 2026",
-    initial: "V",
-    avatar: "blue",
-  },
-];
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { apiJson } from "@/lib/api";
+
+type ApiEmployee = { EmployeeId: number; Name?: string; Email?: string; Department?: string; JoiningDate?: string };
+type ApiStatus = { StatusId: number; EmployeeId: number; Status: string; CreatedAt?: string };
+type DashboardEmployee = { id: number; name: string; email: string; department: string; status: string; date: string; initial: string; avatar: string };
+
+const toList = <T,>(data: unknown, key: string): T[] => {
+  if (Array.isArray(data)) return data as T[];
+  if (data && typeof data === "object") {
+    const value = (data as Record<string, unknown>).data ?? (data as Record<string, unknown>)[key];
+    return Array.isArray(value) ? value as T[] : [];
+  }
+  return [];
+};
 
 export default function AdminDashboardPage() {
+  const [employees, setEmployees] = useState<DashboardEmployee[]>([]);
+  const [statusUpdatesToday, setStatusUpdatesToday] = useState(0);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const [employeeData, statusData] = await Promise.all([
+            apiJson<unknown>("/admin/employees", { cache: "no-store" }),
+            apiJson<unknown>("/admin/statuses", { cache: "no-store" }),
+          ]);
+          const statuses = toList<ApiStatus>(statusData, "statuses");
+          const latestStatuses = new Map<number, ApiStatus>();
+          for (const status of statuses) {
+            const previous = latestStatuses.get(Number(status.EmployeeId));
+            if (!previous || Number(status.StatusId) > Number(previous.StatusId)) latestStatuses.set(Number(status.EmployeeId), status);
+          }
+          const today = new Date().toDateString();
+          setStatusUpdatesToday(statuses.filter((status) => status.CreatedAt && new Date(status.CreatedAt).toDateString() === today).length);
+          setEmployees(toList<ApiEmployee>(employeeData, "employees").map((employee) => {
+            const name = employee.Name ?? "Unknown Employee";
+            return { id: employee.EmployeeId, name, email: employee.Email ?? "N/A", department: employee.Department ?? "N/A", status: latestStatuses.get(Number(employee.EmployeeId))?.Status ?? "Inactive", date: employee.JoiningDate ? new Date(employee.JoiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "N/A", initial: name.charAt(0).toUpperCase(), avatar: "green" };
+          }));
+          setError("");
+        } catch (cause) { setError(cause instanceof Error ? cause.message : "Failed to load dashboard."); }
+      })();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const activeEmployees = employees.filter((employee) => employee.status.toLowerCase() === "active").length;
+  const departments = new Set(employees.map((employee) => employee.department).filter((department) => department !== "N/A")).size;
+  const recentEmployees = employees.slice(0, 5);
+
   return (
     <main className="dashboard-page">
       <aside className="sidebar">
@@ -147,7 +146,7 @@ export default function AdminDashboardPage() {
 
     <div className="stat-card-content">
       <span>Total Employees</span>
-      <strong>120</strong>
+      <strong>{employees.length}</strong>
       <p>All registered employees</p>
     </div>
 
@@ -177,7 +176,7 @@ export default function AdminDashboardPage() {
 
     <div className="stat-card-content">
       <span>Active Employees</span>
-      <strong>105</strong>
+      <strong>{activeEmployees}</strong>
       <p>Currently active</p>
     </div>
 
@@ -208,7 +207,7 @@ export default function AdminDashboardPage() {
 
     <div className="stat-card-content">
       <span>Inactive Employees</span>
-      <strong>15</strong>
+      <strong>{employees.length - activeEmployees}</strong>
       <p>Currently inactive</p>
     </div>
 
@@ -240,7 +239,7 @@ export default function AdminDashboardPage() {
 
     <div className="stat-card-content">
       <span>Today&apos;s Status Updates</span>
-      <strong>98</strong>
+      <strong>{statusUpdatesToday}</strong>
       <p>Status changes today</p>
     </div>
 
@@ -255,6 +254,7 @@ export default function AdminDashboardPage() {
       <div>
         <h2>Recent Employees</h2>
         <p>Recently added employees to the system.</p>
+        {error && <p role="alert">{error}</p>}
       </div>
     </div>
 
@@ -278,7 +278,7 @@ export default function AdminDashboardPage() {
       </thead>
 
       <tbody>
-        {employees.map((employee) => (
+        {recentEmployees.map((employee) => (
           <tr key={employee.id}>
             <td className="number-column">
               {employee.id}
@@ -341,6 +341,9 @@ export default function AdminDashboardPage() {
             </td>
           </tr>
         ))}
+        {!error && recentEmployees.length === 0 && (
+          <tr><td colSpan={7}>No employees found.</td></tr>
+        )}
       </tbody>
     </table>
   </div>
@@ -390,7 +393,7 @@ export default function AdminDashboardPage() {
                 <div className="overview-icon yellow">⌂</div>
 
                 <div>
-                  <strong>4</strong>
+                  <strong>{departments}</strong>
                   <span>Departments</span>
                 </div>
               </div>
@@ -399,7 +402,7 @@ export default function AdminDashboardPage() {
                 <div className="overview-icon green">♟</div>
 
                 <div>
-                  <strong>120</strong>
+                  <strong>{employees.length}</strong>
                   <span>Total Employees</span>
                 </div>
               </div>
@@ -408,7 +411,7 @@ export default function AdminDashboardPage() {
                 <div className="overview-icon mint">〽</div>
 
                 <div>
-                  <strong>98</strong>
+                  <strong>{statusUpdatesToday}</strong>
                   <span>Status Updates Today</span>
                 </div>
               </div>
