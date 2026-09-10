@@ -52,3 +52,29 @@ export const getUserByUserId = async (
 
     return result.recordset[0];
 };
+export const createAdmin = async (
+    name: string,
+    email: string,
+    passwordHash: string
+) => {
+    const pool = await poolPromise;
+
+    const result = await pool
+        .request()
+        .input("Name", name)
+        .input("Email", email)
+        .input("PasswordHash", passwordHash)
+        .query(`
+            INSERT INTO Users
+                (Name, Email, PasswordHash, Role)
+            OUTPUT
+                INSERTED.UserId,
+                INSERTED.Name,
+                INSERTED.Email,
+                INSERTED.Role
+            VALUES
+                (@Name, @Email, @PasswordHash, 'Admin');
+        `);
+
+    return result.recordset[0];
+};

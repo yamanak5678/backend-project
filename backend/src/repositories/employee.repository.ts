@@ -30,18 +30,57 @@
 
         return result.recordset[0];
     };
-    export const createEmployee = async (employee: {
-        userId: number;
-        phone: string;
-        department: string;
-        position: string;
-        joiningDate: string;
-    }) => {
-        const pool = await poolPromise;
+ export const createEmployee = async (employee: {
+    name: string;
+    email: string;
+    passwordHash: string;
+    phone: string;
+    department: string;
+    position: string;
+    joiningDate: string;
+    status: string;
+}) => {
+    const pool = await poolPromise;
 
-        const result = await pool
+    const transaction = pool.transaction();
+
+    try {
+        await transaction.begin();
+
+        // 1. Check duplicate email
+        const existingUser = await transaction
             .request()
-            .input("UserId", employee.userId)
+            .input("Email", employee.email)
+            .query(`
+                SELECT UserId
+                FROM Users
+                WHERE Email = @Email
+            `);
+
+        if (existingUser.recordset.length > 0) {
+            throw new Error("EMAIL_ALREADY_EXISTS");
+        }
+
+        // 2. Create User
+        const userResult = await transaction
+            .request()
+            .input("Name", employee.name)
+            .input("Email", employee.email)
+            .input("PasswordHash", employee.passwordHash)
+            .query(`
+                INSERT INTO Users
+                    (Name, Email, PasswordHash, Role)
+                OUTPUT INSERTED.UserId
+                VALUES
+                    (@Name, @Email, @PasswordHash, 'Employee')
+            `);
+
+        const userId = userResult.recordset[0].UserId;
+
+        // 3. Create Employee
+        const employeeResult = await transaction
+            .request()
+            .input("UserId", userId)
             .input("Phone", employee.phone)
             .input("Department", employee.department)
             .input("Position", employee.position)
@@ -49,26 +88,114 @@
             .query(`
                 INSERT INTO Employees
                     (UserId, Phone, Department, Position, JoiningDate)
-                OUTPUT INSERTED.*
+                OUTPUT INSERTED.EmployeeId
                 VALUES
                     (@UserId, @Phone, @Department, @Position, @JoiningDate)
             `);
 
-        return result.recordset[0];
-    };
+        const employeeId =
+            employeeResult.recordset[0].EmployeeId;
 
-    export const updateEmployee = async (
-        id: number,
-        employee: {
-            phone: string;
-            department: string;
-            position: string;
-            joiningDate: string;
-        }
-    ) => {
-        const pool = await poolPromise;
+        // 4. Create initial status
+        await transaction
+            .request()
+            .input("EmployeeId", employeeId)
+            .input("Status", employee.status)
+            .input(
+                "Description",
+                `Employee created with status ${employee.status}`
+            )
+            .query(`
+                INSERT INTO EmployeeStatuses
+                    (EmployeeId, Status, Description)
+                VALUES
+                    (@EmployeeId, @Status, @Description)
+            `);
 
+        await transaction.commit();
+
+        // 5. Return complete employee
         const result = await pool
+            .request()
+            .input("EmployeeId", employeeId)
+            .query(`
+                SELECT
+                    e.*,
+                    u.Name,
+                    u.Email,
+                    u.Role
+                FROM Employees e
+                INNER JOIN Users u
+                    ON u.UserId = e.UserId
+                WHERE e.EmployeeId = @EmployeeId
+            `);
+
+        return result.recordset[0];
+
+    } catch (error) {
+        try {
+            await transaction.rollback();
+        } catch {
+            // Transaction already rolled back
+        }
+
+        throw error;
+    }
+};
+
+   export const updateEmployee = async (
+    id: number,
+    employee: {
+        name: string;
+        email: string;
+        phone: string;
+        department: string;
+        position: string;
+        joiningDate: string;
+    }
+) => {
+    const pool = await poolPromise;
+
+    const transaction = pool.transaction();
+
+    try {
+        await transaction.begin();
+
+        // First get UserId for this Employee
+        const employeeResult = await transaction
+            .request()
+            .input("EmployeeId", id)
+            .query(`
+                SELECT UserId
+                FROM Employees
+                WHERE EmployeeId = @EmployeeId
+            `);
+
+        const existingEmployee = employeeResult.recordset[0];
+
+        if (!existingEmployee) {
+            await transaction.rollback();
+            return null;
+        }
+
+        const userId = existingEmployee.UserId;
+
+        // Update Users table
+        await transaction
+            .request()
+            .input("UserId", userId)
+            .input("Name", employee.name)
+            .input("Email", employee.email)
+            .query(`
+                UPDATE Users
+                SET
+                    Name = @Name,
+                    Email = @Email
+                WHERE UserId = @UserId
+            `);
+
+        // Update Employees table
+        const result = await transaction
             .request()
             .input("EmployeeId", id)
             .input("Phone", employee.phone)
@@ -83,12 +210,34 @@
                     Position = @Position,
                     JoiningDate = @JoiningDate,
                     UpdatedAt = GETDATE()
-                OUTPUT INSERTED.*
                 WHERE EmployeeId = @EmployeeId
             `);
 
-        return result.recordset[0];
-    };
+        await transaction.commit();
+
+        // Return complete updated employee
+        const updatedResult = await pool
+            .request()
+            .input("EmployeeId", id)
+            .query(`
+                SELECT e.*, u.Name, u.Email
+                FROM Employees e
+                INNER JOIN Users u ON u.UserId = e.UserId
+                WHERE e.EmployeeId = @EmployeeId
+            `);
+
+        return updatedResult.recordset[0];
+
+    } catch (error) {
+        try {
+            await transaction.rollback();
+        } catch {
+            // Transaction already rolled back
+        }
+
+        throw error;
+    }
+};
     export const deleteEmployee = async (id: number) => {
         const pool = await poolPromise;
 

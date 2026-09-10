@@ -2,273 +2,481 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiJson } from "@/lib/api";
 
 export default function AddEmployeePage() {
-  const [showPassword, setShowPassword] = useState(false);
+    const router = useRouter();
 
-  return (
-    <main className="dashboard-page">
+    const [showPassword, setShowPassword] = useState(false);
 
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">EMS</div>
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
+    const [department, setDepartment] = useState("");
+    const [designation, setDesignation] = useState("");
+    const [password, setPassword] = useState("");
+    const [status, setStatus] = useState("Active");
+    const [joiningDate, setJoiningDate] = useState("");
 
-        <h2>Admin Panel</h2>
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
-        <nav>
-          <Link href="/admin/dashboard">
-            Dashboard
-          </Link>
+    const handleSubmit = async (
+        event: React.FormEvent<HTMLFormElement>
+    ) => {
+        event.preventDefault();
 
-          <Link
-            href="/admin/employees"
-            className="active"
-          >
-            Employees
-          </Link>
+        setError("");
+        setSuccess("");
 
-          <Link href="/admin/statuses">
-            Statuses
-          </Link>
+        const name = `${firstName.trim()} ${lastName.trim()}`.trim();
 
-          <Link href="/admin/reports">
-            Reports
-          </Link>
-        </nav>
+        if (!name) {
+            setError("First name or last name is required.");
+            return;
+        }
 
-        <div className="sidebar-bottom">
-          <Link href="/">
-            Logout
-          </Link>
-        </div>
-      </aside>
+        if (!email.trim()) {
+            setError("Email is required.");
+            return;
+        }
 
-      {/* Main Content */}
-      <section className="dashboard-content">
+        if (!phone.trim()) {
+            setError("Phone number is required.");
+            return;
+        }
 
-        {/* Header */}
-        <header className="dashboard-header">
-          <div>
-            <h1>Add Employee</h1>
-            <p>
-              Create a new employee account.
-            </p>
-          </div>
+        if (!department) {
+            setError("Please select a department.");
+            return;
+        }
 
-          <div className="admin-profile">
-            <div className="profile-circle">
-              A
-            </div>
+        if (!designation.trim()) {
+            setError("Designation is required.");
+            return;
+        }
 
-            <div>
-              <strong>Admin</strong>
-              <span>Administrator</span>
-            </div>
-          </div>
-        </header>
+        if (!password) {
+            setError("Password is required.");
+            return;
+        }
 
-        {/* Add Employee Form */}
-        <div className="add-employee-section">
+        if (!joiningDate) {
+            setError("Joining date is required.");
+            return;
+        }
 
-          <div className="add-employee-header">
-            <h2>Employee Information</h2>
+        try {
+            setLoading(true);
 
-            <p>
-              Enter the employee details below.
-            </p>
-          </div>
+            const response = await apiJson<{
+                message: string;
+                employee: unknown;
+            }>("/admin/employees", {
+                method: "POST",
+                body: JSON.stringify({
+                    name,
+                    email: email.trim(),
+                    password,
+                    phone: phone.trim(),
+                    department,
+                    position: designation.trim(),
+                    joiningDate,
+                    status
+                })
+            });
 
-          <form>
+            setSuccess(
+                response.message ||
+                    "Employee created successfully."
+            );
 
-            {/* First Name / Last Name */}
-            <div className="form-row">
+            // Go back to employee list after successful creation
+            setTimeout(() => {
+                router.push("/admin/employees");
+                router.refresh();
+            }, 800);
 
-              <div className="employee-form-group">
-                <label htmlFor="firstName">
-                  First Name
-                </label>
+        } catch (cause) {
+            console.error(
+                "Create employee error:",
+                cause
+            );
 
-                <input
-                  id="firstName"
-                  type="text"
-                  placeholder="Enter first name"
-                />
-              </div>
+            setError(
+                cause instanceof Error
+                    ? cause.message
+                    : "Failed to create employee."
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
 
-              <div className="employee-form-group">
-                <label htmlFor="lastName">
-                  Last Name
-                </label>
+    return (
+        <main className="dashboard-page">
 
-                <input
-                  id="lastName"
-                  type="text"
-                  placeholder="Enter last name"
-                />
-              </div>
+            {/* Sidebar */}
+            <aside className="sidebar">
+                <div className="sidebar-logo">EMS</div>
 
-            </div>
+                <h2>Admin Panel</h2>
 
-            {/* Email / Phone */}
-            <div className="form-row">
+                <nav>
+                    <Link href="/admin/dashboard">
+                        Dashboard
+                    </Link>
 
-              <div className="employee-form-group">
-                <label htmlFor="email">
-                  Email Address
-                </label>
+                    <Link
+                        href="/admin/employees"
+                        className="active"
+                    >
+                        Employees
+                    </Link>
 
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="Enter email address"
-                />
-              </div>
+                    <Link href="/admin/statuses">
+                        Statuses
+                    </Link>
 
-              <div className="employee-form-group">
-                <label htmlFor="phone">
-                  Phone Number
-                </label>
+                    <Link href="/admin/reports">
+                        Reports
+                    </Link>
+                </nav>
 
-                <input
-                  id="phone"
-                  type="tel"
-                  placeholder="Enter phone number"
-                />
-              </div>
+                <div className="sidebar-bottom">
+                    <Link href="/">
+                        Logout
+                    </Link>
+                </div>
+            </aside>
 
-            </div>
+            {/* Main Content */}
+            <section className="dashboard-content">
 
-            {/* Department / Designation */}
-            <div className="form-row">
+                {/* Header */}
+                <header className="dashboard-header">
+                    <div>
+                        <h1>Add Employee</h1>
 
-              <div className="employee-form-group">
-                <label htmlFor="department">
-                  Department
-                </label>
+                        <p>
+                            Create a new employee account.
+                        </p>
+                    </div>
 
-                <select
-                  id="department"
-                  defaultValue=""
-                >
-                  <option
-                    value=""
-                    disabled
-                  >
-                    Select department
-                  </option>
+                    <div className="admin-profile">
+                        <div className="profile-circle">
+                            A
+                        </div>
 
-                  <option value="Development">
-                    Development
-                  </option>
+                        <div>
+                            <strong>Admin</strong>
+                            <span>Administrator</span>
+                        </div>
+                    </div>
+                </header>
 
-                  <option value="HR">
-                    HR
-                  </option>
+                {/* Add Employee Form */}
+                <div className="add-employee-section">
 
-                  <option value="Design">
-                    Design
-                  </option>
+                    <div className="add-employee-header">
+                        <h2>Employee Information</h2>
 
-                  <option value="Marketing">
-                    Marketing
-                  </option>
+                        <p>
+                            Enter the employee details below.
+                        </p>
+                    </div>
 
-                  <option value="Finance">
-                    Finance
-                  </option>
-                </select>
-              </div>
+                    <form onSubmit={handleSubmit}>
 
-              <div className="employee-form-group">
-                <label htmlFor="designation">
-                  Designation
-                </label>
+                        {/* First Name / Last Name */}
+                        <div className="form-row">
 
-                <input
-                  id="designation"
-                  type="text"
-                  placeholder="Enter designation"
-                />
-              </div>
+                            <div className="employee-form-group">
+                                <label htmlFor="firstName">
+                                    First Name
+                                </label>
 
-            </div>
+                                <input
+                                    id="firstName"
+                                    type="text"
+                                    placeholder="Enter first name"
+                                    value={firstName}
+                                    onChange={(event) =>
+                                        setFirstName(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </div>
 
-            {/* Password */}
-            <div className="employee-form-group">
+                            <div className="employee-form-group">
+                                <label htmlFor="lastName">
+                                    Last Name
+                                </label>
 
-              <label htmlFor="password">
-                Password
-              </label>
+                                <input
+                                    id="lastName"
+                                    type="text"
+                                    placeholder="Enter last name"
+                                    value={lastName}
+                                    onChange={(event) =>
+                                        setLastName(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </div>
 
-              <div className="employee-password-box">
+                        </div>
 
-                <input
-                  id="password"
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
-                  placeholder="Enter password"
-                />
+                        {/* Email / Phone */}
+                        <div className="form-row">
 
-                <button
-                  type="button"
-                  className="employee-show-password"
-                  onClick={() =>
-                    setShowPassword(!showPassword)
-                  }
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
+                            <div className="employee-form-group">
+                                <label htmlFor="email">
+                                    Email Address
+                                </label>
 
-              </div>
-            </div>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    placeholder="Enter email address"
+                                    value={email}
+                                    onChange={(event) =>
+                                        setEmail(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </div>
 
-            {/* Status */}
-            <div className="employee-form-group">
+                            <div className="employee-form-group">
+                                <label htmlFor="phone">
+                                    Phone Number
+                                </label>
 
-              <label htmlFor="status">
-                Status
-              </label>
+                                <input
+                                    id="phone"
+                                    type="tel"
+                                    placeholder="Enter phone number"
+                                    value={phone}
+                                    maxLength={10}
+                                    onChange={(event) =>
+                                        setPhone(
+                                            event.target.value.replace(
+                                                /\D/g,
+                                                ""
+                                            )
+                                        )
+                                    }
+                                />
+                            </div>
 
-              <select
-                id="status"
-                defaultValue="Active"
-              >
-                <option value="Active">
-                  Active
-                </option>
+                        </div>
 
-                <option value="Inactive">
-                  Inactive
-                </option>
-              </select>
+                        {/* Department / Designation */}
+                        <div className="form-row">
 
-            </div>
+                            <div className="employee-form-group">
+                                <label htmlFor="department">
+                                    Department
+                                </label>
 
-            {/* Buttons */}
-            <div className="add-employee-actions">
+                                <select
+                                    id="department"
+                                    value={department}
+                                    onChange={(event) =>
+                                        setDepartment(
+                                            event.target.value
+                                        )
+                                    }
+                                >
+                                    <option value="" disabled>
+                                        Select department
+                                    </option>
 
-              <Link
-                href="/admin/employees"
-                className="cancel-employee-button"
-              >
-                Cancel
-              </Link>
+                                    <option value="Development">
+                                        Development
+                                    </option>
 
-              <button
-                type="submit"
-                className="create-employee-button"
-              >
-                Create Employee
-              </button>
+                                    <option value="HR">
+                                        HR
+                                    </option>
 
-            </div>
+                                    <option value="Design">
+                                        Design
+                                    </option>
 
-          </form>
-        </div>
-      </section>
-    </main>
-  );
+                                    <option value="Marketing">
+                                        Marketing
+                                    </option>
+
+                                    <option value="Finance">
+                                        Finance
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div className="employee-form-group">
+                                <label htmlFor="designation">
+                                    Designation
+                                </label>
+
+                                <input
+                                    id="designation"
+                                    type="text"
+                                    placeholder="Enter designation"
+                                    value={designation}
+                                    onChange={(event) =>
+                                        setDesignation(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </div>
+
+                        </div>
+
+                        {/* Joining Date */}
+                        <div className="employee-form-group">
+                            <label htmlFor="joiningDate">
+                                Joining Date
+                            </label>
+
+                            <input
+                                id="joiningDate"
+                                type="date"
+                                value={joiningDate}
+                                onChange={(event) =>
+                                    setJoiningDate(
+                                        event.target.value
+                                    )
+                                }
+                            />
+                        </div>
+
+                        {/* Password */}
+                        <div className="employee-form-group">
+
+                            <label htmlFor="password">
+                                Password
+                            </label>
+
+                            <div className="employee-password-box">
+
+                                <input
+                                    id="password"
+                                    type={
+                                        showPassword
+                                            ? "text"
+                                            : "password"
+                                    }
+                                    placeholder="Enter password"
+                                    value={password}
+                                    onChange={(event) =>
+                                        setPassword(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+
+                                <button
+                                    type="button"
+                                    className="employee-show-password"
+                                    onClick={() =>
+                                        setShowPassword(
+                                            !showPassword
+                                        )
+                                    }
+                                >
+                                    {showPassword
+                                        ? "Hide"
+                                        : "Show"}
+                                </button>
+
+                            </div>
+                        </div>
+
+                        {/* Status */}
+                        <div className="employee-form-group">
+
+                            <label htmlFor="status">
+                                Status
+                            </label>
+
+                            <select
+                                id="status"
+                                value={status}
+                                onChange={(event) =>
+                                    setStatus(
+                                        event.target.value
+                                    )
+                                }
+                            >
+                                <option value="Active">
+                                    Active
+                                </option>
+
+                                <option value="Inactive">
+                                    Inactive
+                                </option>
+                            </select>
+
+                        </div>
+
+                        {/* Error */}
+                        {error && (
+                            <div
+                                style={{
+                                    color: "red",
+                                    marginTop: "12px"
+                                }}
+                            >
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Success */}
+                        {success && (
+                            <div
+                                style={{
+                                    color: "green",
+                                    marginTop: "12px"
+                                }}
+                            >
+                                {success}
+                            </div>
+                        )}
+
+                        {/* Buttons */}
+                        <div className="add-employee-actions">
+
+                            <Link
+                                href="/admin/employees"
+                                className="cancel-employee-button"
+                            >
+                                Cancel
+                            </Link>
+
+                            <button
+                                type="submit"
+                                className="create-employee-button"
+                                disabled={loading}
+                            >
+                                {loading
+                                    ? "Creating..."
+                                    : "Create Employee"}
+                            </button>
+
+                        </div>
+
+                    </form>
+                </div>
+
+            </section>
+        </main>
+    );
 }
