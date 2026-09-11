@@ -1746,7 +1746,7 @@ body {
 .statuses-row {
   min-width: 700px;
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: 1.3fr 2fr 1.2fr 1.2fr;
   align-items: center;
   padding: 15px 10px;
   border-bottom: 1px solid #ecfdf5;

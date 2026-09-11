@@ -21,11 +21,37 @@ export default function ReportsPage() {
       const employees = Array.isArray(employeeData) ? employeeData as Employee[] : [];
       const statuses = Array.isArray(statusData) ? statusData as EmployeeStatus[] : [];
       const latest = new Map<number, EmployeeStatus>();
-      for (const item of statuses) if (!latest.has(item.EmployeeId) || item.StatusId > (latest.get(item.EmployeeId)?.StatusId ?? 0)) latest.set(item.EmployeeId, item);
-      setReports(employees.map((employee) => {
-        const item = latest.get(employee.EmployeeId);
-        const dateValue = item?.CreatedAt;
-        return { id: employee.EmployeeId, name: employee.Name ?? "Unknown Employee", department: employee.Department ?? "N/A", status: item?.Status ?? "Inactive", date: dateValue ? new Date(dateValue).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "N/A", dateValue };
+
+for (const item of statuses) {
+  const employeeId = Number(item.EmployeeId);
+  const statusId = Number(item.StatusId);
+
+  const existing = latest.get(employeeId);
+
+  if (!existing || statusId > Number(existing.StatusId)) {
+    latest.set(employeeId, item);
+  }
+}
+      setReports(
+  employees.map((employee) => {
+    const employeeId = Number(employee.EmployeeId);
+    const item = latest.get(employeeId);
+    const dateValue = item?.CreatedAt;
+
+    return {
+      id: employeeId,
+      name: employee.Name ?? "Unknown Employee",
+      department: employee.Department ?? "N/A",
+      status: item?.Status ?? "Inactive",
+      date: dateValue
+        ? new Date(dateValue).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : "N/A",
+      dateValue,
+    };
       }));
     } catch (cause) { setDownloadError(cause instanceof Error ? cause.message : "Failed to load reports."); }
   }, []);
