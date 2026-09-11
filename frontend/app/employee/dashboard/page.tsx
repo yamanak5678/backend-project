@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { apiJson } from "@/lib/api";
+
 import {
   Activity,
   ArrowRight,
@@ -16,7 +21,33 @@ import {
   Zap,
 } from "lucide-react";
 
+type EmployeeProfile = {
+  EmployeeId: number;
+  Name?: string;
+  Department?: string;
+  Position?: string;
+};
+
 export default function EmployeeDashboardPage() {
+  const [profile, setProfile] = useState<EmployeeProfile | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await apiJson<EmployeeProfile>("/employees/me");
+        setProfile(data);
+      } catch (error) {
+        console.error("Failed to load employee profile:", error);
+      }
+    };
+
+    void loadProfile();
+  }, []);
+
+  const employeeName = profile?.Name ?? "Employee";
+  const initial = employeeName.charAt(0).toUpperCase();
+  const firstName = employeeName.split(" ")[0];
+
   return (
     <main className="employee-dashboard-page">
       {/* ================= SIDEBAR ================= */}
@@ -95,12 +126,12 @@ export default function EmployeeDashboardPage() {
             </button>
 
             <div className="employee-header-profile">
-              <div className="employee-header-avatar">R</div>
+              <div className="employee-header-avatar">{initial}</div>
 
-              <div>
-                <strong>Rahul Sharma</strong>
-                <span>Software Developer</span>
-              </div>
+                <div>
+                  <strong>{employeeName}</strong>
+                  <span>{profile?.Position ?? "Employee"}</span>
+                </div>
 
               <ChevronDown size={18} />
             </div>
@@ -112,7 +143,7 @@ export default function EmployeeDashboardPage() {
           <div className="employee-welcome-content">
             <span>Good Morning ☀️</span>
 
-            <h2>Welcome back, Rahul! 👋</h2>
+            <h2>Welcome back, {firstName}! 👋</h2>
 
             <p>
               Have a productive day! You can manage your profile and
@@ -174,9 +205,8 @@ export default function EmployeeDashboardPage() {
                 <span>Department</span>
               </div>
 
-              <strong>Development</strong>
-
-              <p>Software Development Team</p>
+              <strong>{profile?.Department ?? "N/A"}</strong>
+              <p>{profile?.Department ?? "Department"} Team</p>
             </div>
           </div>
 
@@ -191,9 +221,8 @@ export default function EmployeeDashboardPage() {
                 <span>Designation</span>
               </div>
 
-              <strong>Software Developer</strong>
-
-              <p>Employee ID: EMP-001</p>
+              <strong>{profile?.Position ?? "N/A"}</strong>
+              <p>Employee ID: {profile?.EmployeeId ?? "N/A"}</p>
             </div>
           </div>
         </section>

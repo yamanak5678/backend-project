@@ -267,7 +267,7 @@ export default function EmployeeProfilePage() {
                             </div>
 
                             {/* Change Password */}
-                            <div className="profile-information-card">
+                            <div className="profile-information-card profile-password-card">
                                 <h2>Change Password</h2>
 
                                 <p>
@@ -318,6 +318,7 @@ export default function EmployeeProfilePage() {
 
                                     <button
                                         type="submit"
+                                        className="change-password-button"
                                         disabled={changingPassword}
                                     >
                                         {changingPassword
