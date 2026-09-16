@@ -2,6 +2,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 type ApiError = { message?: string };
 
+const endSession = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+
+  if (window.location.pathname !== "/") {
+    window.location.assign("/");
+  }
+};
+
 const getErrorMessage = async (response: Response) => {
   const data = await response.json().catch(() => ({})) as ApiError;
   return data.message ?? "Request failed";
@@ -18,8 +28,7 @@ const refreshAccessToken = async () => {
   });
 
   if (!response.ok) {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    endSession();
     throw new Error("Your session has expired. Please log in again.");
   }
 
@@ -31,15 +40,35 @@ const refreshAccessToken = async () => {
 
 export async function apiFetch(path: string, init: RequestInit = {}) {
   const send = (token: string) => fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { ...init.headers, Authorization: `Bearer ${token}` },
-  });
+  ...init,
+  headers: {
+    "Content-Type": "application/json",
+    ...init.headers,
+    Authorization: `Bearer ${token}`,
+  },
+});
 
   const token = localStorage.getItem("accessToken");
-  if (!token) throw new Error("Please log in again.");
+  if (!token) {
+    endSession();
+    throw new Error("Please log in again.");
+  }
 
   let response = await send(token);
-  if (response.status === 401) response = await send(await refreshAccessToken());
+  if (response.status === 401) {
+    try {
+      response = await send(await refreshAccessToken());
+    } catch (error) {
+      endSession();
+      throw error;
+    }
+  }
+
+  if (response.status === 401) {
+    endSession();
+    throw new Error("Your session has expired. Please log in again.");
+  }
+
   if (!response.ok) throw new Error(await getErrorMessage(response));
   return response;
 }

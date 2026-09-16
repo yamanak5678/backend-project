@@ -1,4 +1,5 @@
     import { poolPromise } from "../config/database.js";
+    import bcrypt from "bcryptjs";
 
     export const getAllEmployees = async () => {
         const pool = await poolPromise;
@@ -238,42 +239,147 @@
         throw error;
     }
 };
-    export const deleteEmployee = async (id: number) => {
-        const pool = await poolPromise;
+export const getDeletedEmployees = async () => {
+    const pool = await poolPromise;
 
-        const transaction = pool.transaction();
+    const result = await pool
+        .request()
+        .query(`
+            SELECT
+                DeletedEmployeeId,
+                EmployeeId,
+                UserId,
+                Name,
+                Email,
+                Phone,
+                Department,
+                Position,
+                JoiningDate,
+                DeletedAt
+            FROM DeletedEmployees
+            ORDER BY DeletedAt DESC
+        `);
 
-        try {
-            await transaction.begin();
+    return result.recordset;
+};
+  export const deleteEmployee = async (id: number) => {
+    const pool = await poolPromise;
+    const transaction = pool.transaction();
 
-            // 1. Delete employee status records
-            await transaction
-                .request()
-                .input("EmployeeId", id)
-                .query(`
-                    DELETE FROM EmployeeStatuses
-                    WHERE EmployeeId = @EmployeeId
+    try {
+        await transaction.begin();
+
+        // 1. Get complete employee information before deleting
+        const employeeResult = await transaction
+            .request()
+            .input("EmployeeId", id)
+            .query(`
+                    SELECT
+                        e.EmployeeId,
+                        e.UserId,
+                        e.Phone,
+                        e.Department,
+                        e.Position,
+                        e.JoiningDate,
+                        u.Name,
+                        u.Email,
+                        u.PasswordHash,
+                        u.Role
+                    FROM Employees e
+                    INNER JOIN Users u
+                        ON u.UserId = e.UserId
+                    WHERE e.EmployeeId = @EmployeeId
                 `);
 
-            // 2. Delete employee
-            const result = await transaction
-                .request()
-                .input("EmployeeId", id)
-                .query(`
-                    DELETE FROM Employees
-                    OUTPUT DELETED.*
-                    WHERE EmployeeId = @EmployeeId
-                `);
+        const employee = employeeResult.recordset[0];
 
-            await transaction.commit();
-
-            return result.recordset[0];
-
-        } catch (error) {
+        if (!employee) {
             await transaction.rollback();
-            throw error;
+            return null;
         }
-    };
+
+        const userId = employee.UserId;
+
+        // 2. Save employee information in DeletedEmployees
+        await transaction
+            .request()
+            .input("EmployeeId", employee.EmployeeId)
+            .input("UserId", employee.UserId)
+            .input("Name", employee.Name)
+            .input("Email", employee.Email)
+            .input("Phone", employee.Phone)
+            .input("PasswordHash", employee.PasswordHash)
+            .input("Role", employee.Role)
+            .input("Department", employee.Department)
+            .input("Position", employee.Position)
+            .input("JoiningDate", employee.JoiningDate)
+            .query(`
+               
+                    INSERT INTO DeletedEmployees
+                    (
+                        EmployeeId,
+                        UserId,
+                        Name,
+                        Email,
+                        PasswordHash,
+                        Role,
+                        Phone,
+                        Department,
+                        Position,
+                        JoiningDate
+                    )
+                    VALUES
+                    (
+                        @EmployeeId,
+                        @UserId,
+                        @Name,
+                        @Email,
+                        @PasswordHash,
+                        @Role,
+                        @Phone,
+                        @Department,
+                        @Position,
+                        @JoiningDate
+                    )
+                `);
+
+        // 3. Delete employee status records
+        await transaction
+            .request()
+            .input("EmployeeId", id)
+            .query(`
+                DELETE FROM EmployeeStatuses
+                WHERE EmployeeId = @EmployeeId
+            `);
+
+        // 4. Delete employee record
+        const result = await transaction
+            .request()
+            .input("EmployeeId", id)
+            .query(`
+                DELETE FROM Employees
+                OUTPUT DELETED.*
+                WHERE EmployeeId = @EmployeeId
+            `);
+
+        // 5. Delete user record
+        await transaction
+            .request()
+            .input("UserId", userId)
+            .query(`
+                DELETE FROM Users
+                WHERE UserId = @UserId
+            `);
+
+        await transaction.commit();
+
+        return result.recordset[0];
+
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+};
     // Get latest status of an employee
     export const getCurrentEmployeeStatus = async (employeeId: number) => {
         const pool = await poolPromise;
@@ -317,18 +423,25 @@
     };
     // Get all employee statuses
     export const getAllEmployeeStatuses = async () => {
-        const pool = await poolPromise;
+    const pool = await poolPromise;
 
-        const result = await pool
-            .request()
-            .query(`
-                SELECT *
-                FROM EmployeeStatuses
-                ORDER BY StatusId DESC
-            `);
+    const result = await pool
+        .request()
+        .query(`
+            SELECT
+                es.*,
+                u.Name AS EmployeeName,
+                u.Email AS EmployeeEmail
+            FROM EmployeeStatuses es
+            INNER JOIN Employees e
+                ON e.EmployeeId = es.EmployeeId
+            INNER JOIN Users u
+                ON u.UserId = e.UserId
+            ORDER BY es.StatusId DESC
+        `);
 
-        return result.recordset;
-    };
+    return result.recordset;
+};
     // Get all statuses for a specific employee
     export const getEmployeeStatuses = async (employeeId: number) => {
         const pool = await poolPromise;
@@ -476,4 +589,151 @@ export const deleteEmployeeStatusForEmployee = async (
         `);
 
     return result.recordset[0];
+};
+export const restoreDeletedEmployee = async (
+    deletedEmployeeId: number
+) => {
+    const pool = await poolPromise;
+    const transaction = pool.transaction();
+
+    try {
+        await transaction.begin();
+
+        const deletedResult = await transaction
+            .request()
+            .input("DeletedEmployeeId", deletedEmployeeId)
+            .query(`
+                SELECT
+                    DeletedEmployeeId,
+                    EmployeeId,
+                    UserId,
+                    Name,
+                    Email,
+                    PasswordHash,
+                    Role,
+                    Phone,
+                    Department,
+                    Position,
+                    JoiningDate
+                FROM DeletedEmployees
+                WHERE DeletedEmployeeId = @DeletedEmployeeId
+            `);
+
+        const employee = deletedResult.recordset[0];
+        const passwordHash =
+                employee.PasswordHash ||
+                await bcrypt.hash("Employee@123", 10);
+
+            const role = employee.Role || "Employee";
+
+        if (!employee) {
+            await transaction.rollback();
+            return null;
+        }
+
+        /*
+         * Restore original UserId.
+         * UserId is an IDENTITY column, so IDENTITY_INSERT
+         * is required for restoring the original record.
+         */
+       
+    const userRequest = transaction
+    .request()
+    .input("UserId", employee.UserId)
+    .input("Name", employee.Name)
+    .input("Email", employee.Email)
+    .input("PasswordHash", passwordHash)
+    .input("Role", role);
+        await userRequest.query(`
+            SET IDENTITY_INSERT Users ON;
+
+            INSERT INTO Users
+            (
+                UserId,
+                Name,
+                Email,
+                PasswordHash,
+                Role
+            )
+            VALUES
+            (
+                @UserId,
+                @Name,
+                @Email,
+                @PasswordHash,
+                @Role
+            );
+
+            SET IDENTITY_INSERT Users OFF;
+        `);
+        /*
+         * Restore original EmployeeId.
+         * EmployeeId is also restored with IDENTITY_INSERT.
+         */
+        const request = transaction.request();
+
+        request.input("EmployeeId", employee.EmployeeId);
+        request.input("UserId", employee.UserId);
+        request.input("Phone", employee.Phone);
+        request.input("Department", employee.Department);
+        request.input("Position", employee.Position);
+        request.input("JoiningDate", employee.JoiningDate);
+
+        await request.query(`
+            SET IDENTITY_INSERT Employees ON;
+
+            INSERT INTO Employees
+            (
+                EmployeeId,
+                UserId,
+                Phone,
+                Department,
+                Position,
+                JoiningDate
+            )
+            VALUES
+            (
+                @EmployeeId,
+                @UserId,
+                @Phone,
+                @Department,
+                @Position,
+                @JoiningDate
+            );
+
+            SET IDENTITY_INSERT Employees OFF;
+        `);
+
+        await transaction
+            .request()
+            .input("DeletedEmployeeId", deletedEmployeeId)
+            .query(`
+                DELETE FROM DeletedEmployees
+                WHERE DeletedEmployeeId = @DeletedEmployeeId
+            `);
+
+        await transaction.commit();
+
+        return employee;
+
+    } catch (error) {
+        try {
+            await transaction
+                .request()
+                .query(`
+                    SET IDENTITY_INSERT Users OFF;
+                `);
+        } catch {}
+
+        try {
+            await transaction
+                .request()
+                .query(`
+                    SET IDENTITY_INSERT Employees OFF;
+                `);
+        } catch {}
+
+        await transaction.rollback();
+        throw error;
+    }
 };

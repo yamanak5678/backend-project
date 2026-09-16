@@ -3,8 +3,11 @@ import type { AuthRequest } from "../middleware/auth.middleware.js";
 
 import {
     getAllEmployees as getAllEmployeesService,
+    getDeletedEmployees as getDeletedEmployeesService,
+    restoreDeletedEmployee as restoreDeletedEmployeeService,
     getEmployeeById as getEmployeeByIdService,
     getEmployeeByUserId as getEmployeeByUserIdService,
+    getMyDashboard as getMyDashboardService,
     createEmployee as createEmployeeService,
     updateEmployee as updateEmployeeService,
     deleteEmployee as deleteEmployeeService,
@@ -66,8 +69,7 @@ export const getEmployeeByIdController = async (
         }
 
         return res.json(employee);
-
-    } catch (error) {
+            } catch (error) {
         console.error(error);
 
         return res.status(500).json({
@@ -75,7 +77,6 @@ export const getEmployeeByIdController = async (
         });
     }
 };
-
 
 // CREATE employee
 
@@ -101,12 +102,24 @@ export const createEmployeeController = async (
     } catch (error) {
         console.error(error);
 
+        const errorMessage =
+            error instanceof Error
+                ? error.message
+                : "";
+
+        if (errorMessage === "EMAIL_ALREADY_EXISTS") {
+            return res.status(409).json({
+                message:
+                    "Email already exists. Please use a different email address."
+            });
+        }
+
         return res.status(500).json({
-            message: "Failed to create employee"
+            message:
+                "Failed to create employee. Please try again."
         });
     }
 };
-
 
 // UPDATE employee
 
@@ -148,6 +161,27 @@ export const updateEmployeeController = async (
 
 
 // DELETE employee
+
+// GET deleted employees
+
+export const getDeletedEmployeesController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const employees =
+            await getDeletedEmployeesService();
+
+        return res.json(employees);
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to fetch deleted employees"
+        });
+    }
+};
 
 export const deleteEmployeeController = async (
     req: Request,
@@ -358,6 +392,45 @@ export const getMyProfileController = async (
 
         return res.status(500).json({
             message: "Failed to get profile"
+        });
+    }
+};
+
+// GET logged-in employee dashboard data
+export const getMyDashboardController = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+
+        const dashboard = await getMyDashboardService(req.user.userId);
+
+        if (dashboard.state === "account-not-found") {
+            return res.status(401).json({
+                message: "Your session is no longer valid. Please log in again."
+            });
+        }
+
+        if (dashboard.state === "employee-not-found") {
+            return res.status(404).json({
+                message: "Employee profile not found"
+            });
+        }
+
+        return res.json({
+            employee: dashboard.employee,
+            statuses: dashboard.statuses
+        });
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to load employee dashboard"
         });
     }
 };
@@ -687,6 +760,42 @@ export const deleteMyStatusController = async (
 
         return res.status(500).json({
             message: "Failed to delete status"
+        });
+    }
+};
+export const restoreDeletedEmployeeController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const deletedEmployeeId = Number(req.params.id);
+
+        if (!Number.isInteger(deletedEmployeeId) || deletedEmployeeId <= 0) {
+            return res.status(400).json({
+                message: "Invalid deleted employee id"
+            });
+        }
+
+        const employee = await restoreDeletedEmployeeService(
+            deletedEmployeeId
+        );
+
+        if (!employee) {
+            return res.status(404).json({
+                message: "Deleted employee not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Employee restored successfully",
+            employee
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to restore employee"
         });
     }
 };

@@ -13,12 +13,15 @@ import {
     createAdminEmployeeStatusController,
     updateAdminEmployeeStatusController,
     getMyProfileController,
+    getMyDashboardController,
     getMyCurrentStatusController,
     updateMyProfileController,
     createMyStatusController,
     getMyStatusHistoryController,
     updateMyStatusByIdController,
     deleteMyStatusController,
+    getDeletedEmployeesController,
+    restoreDeletedEmployeeController,
     
 } from "../controllers/employee.controller.js";
 
@@ -100,7 +103,18 @@ router.delete(
     requireAdmin,
     deleteEmployeeController
 );
-
+router.post(
+    "/admin/deleted-employees/:id/restore",
+    authenticateToken,
+    requireAdmin,
+    restoreDeletedEmployeeController
+);
+router.get(
+    "/admin/deleted-employees",
+    authenticateToken,
+    requireAdmin,
+    getDeletedEmployeesController
+);
 // TOGGLE employee status
 router.patch(
     "/admin/employees/:id/status",
@@ -148,6 +162,13 @@ router.get(
     "/employees/me",
     authenticateToken,
     getMyProfileController
+);
+
+// GET own dashboard data
+router.get(
+    "/employees/me/dashboard",
+    authenticateToken,
+    getMyDashboardController
 );
 
 // UPDATE own profile

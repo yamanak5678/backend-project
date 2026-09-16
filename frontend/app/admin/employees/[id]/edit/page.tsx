@@ -39,7 +39,6 @@ export default function EditEmployeePage() {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [department, setDepartment] = useState("");
-    const [position, setPosition] = useState("");
     const [joiningDate, setJoiningDate] = useState("");
 
     // =========================================
@@ -65,7 +64,6 @@ export default function EditEmployeePage() {
                 setEmail(data.Email || "");
                 setPhone(data.Phone || "");
                 setDepartment(data.Department || "");
-                setPosition(data.Position || "");
 
                 if (data.JoiningDate) {
                     setJoiningDate(
@@ -92,33 +90,156 @@ export default function EditEmployeePage() {
             loadEmployee();
         }
     }, [id]);
+  
 
     // =========================================
     // UPDATE EMPLOYEE
     // =========================================
 
-    const handleSubmit = async (
-        event: React.FormEvent<HTMLFormElement>
-    ) => {
-        event.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-        setError("");
-        setSuccess("");
+    const trimmedName = name.trim();
 
-        if (
-            !name.trim() ||
-            !email.trim() ||
-            !phone.trim() ||
-            !department.trim() ||
-            !position.trim() ||
-            !joiningDate
-        ) {
-            setError(
-                "Please fill all required fields."
-            );
-            return;
-        }
+    if (!trimmedName) {
+        setError("Full Name is required.");
+        return;
+    }
 
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+        setError("Full Name must be between 2 and 100 characters.");
+        return;
+    }
+
+    if (!/^[A-Za-z ]+$/.test(trimmedName)) {
+        setError("Full Name can contain only letters and spaces.");
+        return;
+    }
+  const trimmedEmail = email.trim();
+
+if (!trimmedEmail) {
+    setError("Email Address is required.");
+    return;
+}
+
+if (trimmedEmail.length > 150) {
+    setError("Email Address must not exceed 150 characters.");
+    return;
+}
+
+const emailPattern =
+    /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+if (!emailPattern.test(trimmedEmail)) {
+    setError("Please enter a valid email address.");
+    return;
+}
+
+const [emailName, emailDomain] =
+    trimmedEmail.split("@");
+
+const allowedDomains = [
+    "gmail.com",
+    "yahoo.com",
+    "outlook.com",
+    "hotmail.com",
+    "icloud.com",
+];
+
+if (
+    !emailName ||
+    emailName.startsWith(".") ||
+    emailName.endsWith(".") ||
+    emailName.includes("..")
+) {
+    setError("Please enter a valid email address.");
+    return;
+}
+
+if (
+    !emailDomain ||
+    emailDomain.startsWith(".") ||
+    emailDomain.endsWith(".") ||
+    emailDomain.includes("..") ||
+    !allowedDomains.includes(
+        emailDomain.toLowerCase()
+    )
+) {
+    setError(
+        "Please use a valid email domain such as gmail.com, yahoo.com, outlook.com, hotmail.com or icloud.com."
+    );
+    return;
+}
+
+const trimmedPhone = phone.trim();
+
+if (!trimmedPhone) {
+    setError("Phone Number is required.");
+    return;
+}
+
+if (!/^\d+$/.test(trimmedPhone)) {
+    setError("Phone Number can contain only numbers.");
+    return;
+}
+
+if (trimmedPhone.length !== 10) {
+    setError("Phone Number must be exactly 10 digits.");
+    return;
+    
+}
+const validDepartments = [
+    "Development",
+    "HR",
+    "Design",
+    "Marketing",
+    "Finance",
+    "QA",
+    "Operations",
+];
+
+if (!department.trim()) {
+    setError("Department is required.");
+    return;
+}
+
+if (!validDepartments.includes(department)) {
+    setError("Please select a valid department.");
+    return;
+}
+
+const trimmedJoiningDate = joiningDate.trim();
+
+if (!trimmedJoiningDate) {
+    setError("Joining Date is required.");
+    return;
+}
+
+const [year, month, day] = trimmedJoiningDate
+    .split("-")
+    .map(Number);
+
+const selectedDate = new Date(year, month - 1, day);
+const today = new Date();
+
+selectedDate.setHours(0, 0, 0, 0);
+today.setHours(0, 0, 0, 0);
+
+if (
+    Number.isNaN(selectedDate.getTime()) ||
+    selectedDate.getFullYear() !== year ||
+    selectedDate.getMonth() !== month - 1 ||
+    selectedDate.getDate() !== day
+) {
+    setError("Please enter a valid Joining Date.");
+    return;
+}
+
+if (selectedDate > today) {
+    setError("Joining Date cannot be in the future.");
+    return;
+}
+    
         setUpdating(true);
 
         try {
@@ -136,7 +257,7 @@ export default function EditEmployeePage() {
                             email: email.trim(),
                             phone: phone.trim(),
                             department: department.trim(),
-                            position: position.trim(),
+                           
                             joiningDate,
                         }),
                     }
@@ -155,9 +276,7 @@ export default function EditEmployeePage() {
             setDepartment(
                 updatedEmployee.Department || ""
             );
-            setPosition(
-                updatedEmployee.Position || ""
-            );
+           
 
             if (updatedEmployee.JoiningDate) {
                 setJoiningDate(
@@ -186,8 +305,7 @@ export default function EditEmployeePage() {
         } finally {
             setUpdating(false);
         }
-    };
-
+        };
     // =========================================
     // LOADING
     // =========================================
@@ -503,7 +621,7 @@ export default function EditEmployeePage() {
 
                         </div>
 
-                        {/* Department / Position */}
+                        
 
                         <div className="form-row">
 
@@ -554,25 +672,6 @@ export default function EditEmployeePage() {
                                         Operations
                                     </option>
                                 </select>
-                            </div>
-
-                            <div className="employee-form-group">
-                                <label htmlFor="position">
-                                    Position
-                                </label>
-
-                                <input
-                                    id="position"
-                                    type="text"
-                                    value={position}
-                                    onChange={(event) =>
-                                        setPosition(
-                                            event.target.value
-                                        )
-                                    }
-                                    placeholder="Enter position"
-                                    required
-                                />
                             </div>
 
                         </div>

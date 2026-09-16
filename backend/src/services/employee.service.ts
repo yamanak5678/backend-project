@@ -1,7 +1,10 @@
 import bcrypt from "bcryptjs";
+import { getUserByUserId as getUserByUserIdRepository } from "../repositories/auth.repository.js";
 
 import {
     getAllEmployees as getAllEmployeesRepository,
+    getDeletedEmployees as getDeletedEmployeesRepository,
+    restoreDeletedEmployee as restoreDeletedEmployeeRepository,
     getEmployeeById as getEmployeeByIdRepository,
     getEmployeeByUserId as getEmployeeByUserIdRepository,
     createEmployee as createEmployeeRepository,
@@ -20,6 +23,17 @@ import {
 
 export const getAllEmployees = async () => {
     return await getAllEmployeesRepository();
+};
+
+export const getDeletedEmployees = async () => {
+    return await getDeletedEmployeesRepository();
+};
+export const restoreDeletedEmployee = async (
+    deletedEmployeeId: number
+) => {
+    return await restoreDeletedEmployeeRepository(
+        deletedEmployeeId
+    );
 };
 
 export const getEmployeeById = async (id: number) => {
@@ -111,6 +125,34 @@ export const deleteEmployeeStatus = async (statusId: number) => {
 
 export const getEmployeeByUserId = async (userId: number) => {
     return await getEmployeeByUserIdRepository(userId);
+};
+
+// Dashboard data for the authenticated employee. Both queries are scoped to
+// the user ID from the access token, never to an ID supplied by the client.
+export const getMyDashboard = async (userId: number) => {
+    const user = await getUserByUserIdRepository(userId);
+
+    // A valid JWT may outlive a database reset or account deletion. Do not
+    // report that situation as a missing employee profile.
+    if (!user) {
+        return { state: "account-not-found" as const };
+    }
+
+    const employee = await getEmployeeByUserIdRepository(userId);
+
+    if (!employee) {
+        return { state: "employee-not-found" as const };
+    }
+
+    const statuses = await getEmployeeStatusesRepository(
+        Number(employee.EmployeeId)
+    );
+
+    return {
+        state: "ok" as const,
+        employee,
+        statuses
+    };
 };
 
 export const updateEmployeeByUserId = async (

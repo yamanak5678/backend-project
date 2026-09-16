@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import AdminSidebar from "@/components/AdminSidebar";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, apiJson } from "@/lib/api";
 
 type Employee = { EmployeeId: number; Name?: string; Department?: string };
-type EmployeeStatus = { StatusId: number; EmployeeId: number; Status: string; CreatedAt?: string };
+type EmployeeStatus = { StatusId: number; EmployeeId: number; Status: string; CreatedAt?: string; UpdatedAt?: string; };
 type Report = { id: number; name: string; department: string; status: string; date: string; dateValue?: string };
 
 export default function ReportsPage() {
@@ -18,17 +19,58 @@ export default function ReportsPage() {
   const loadReports = useCallback(async () => {
     try {
       const [employeeData, statusData] = await Promise.all([apiJson<unknown>("/admin/employees"), apiJson<unknown>("/admin/statuses")]);
-      const employees = Array.isArray(employeeData) ? employeeData as Employee[] : [];
-      const statuses = Array.isArray(statusData) ? statusData as EmployeeStatus[] : [];
-      const latest = new Map<number, EmployeeStatus>();
+      const employees =
+  Array.isArray(employeeData)
+    ? employeeData as Employee[]
+    : (
+        employeeData as {
+          data?: Employee[];
+          employees?: Employee[];
+        }
+      )?.data ??
+      (
+        employeeData as {
+          data?: Employee[];
+          employees?: Employee[];
+        }
+      )?.employees ??
+      [];
+
+const statuses =
+  Array.isArray(statusData)
+    ? statusData as EmployeeStatus[]
+    : (
+        statusData as {
+          data?: EmployeeStatus[];
+          statuses?: EmployeeStatus[];
+        }
+      )?.data ??
+      (
+        statusData as {
+          data?: EmployeeStatus[];
+          statuses?: EmployeeStatus[];
+        }
+      )?.statuses ??
+      [];
+
+const latest = new Map<number, EmployeeStatus>();
 
 for (const item of statuses) {
   const employeeId = Number(item.EmployeeId);
-  const statusId = Number(item.StatusId);
+
+  const itemTime = new Date(
+    item.UpdatedAt ?? item.CreatedAt ?? ""
+  ).getTime();
 
   const existing = latest.get(employeeId);
 
-  if (!existing || statusId > Number(existing.StatusId)) {
+  const existingTime = existing
+    ? new Date(
+        existing.UpdatedAt ?? existing.CreatedAt ?? ""
+      ).getTime()
+    : 0;
+
+  if (!existing || itemTime > existingTime) {
     latest.set(employeeId, item);
   }
 }
@@ -55,7 +97,20 @@ for (const item of statuses) {
       }));
     } catch (cause) { setDownloadError(cause instanceof Error ? cause.message : "Failed to load reports."); }
   }, []);
-  useEffect(() => { const timer = window.setTimeout(() => void loadReports(), 0); return () => window.clearTimeout(timer); }, [loadReports]);
+  useEffect(() => {
+  const timer = window.setTimeout(() => void loadReports(), 0);
+
+  const handleFocus = () => {
+    void loadReports();
+  };
+
+  window.addEventListener("focus", handleFocus);
+
+  return () => {
+    window.clearTimeout(timer);
+    window.removeEventListener("focus", handleFocus);
+  };
+}, [loadReports]);
 
   const downloadReport = async () => {
     setDownloading(true);
@@ -91,39 +146,7 @@ for (const item of statuses) {
     <main className="dashboard-page">
 
       {/* Sidebar */}
-      <aside className="sidebar">
-
-        <div className="sidebar-logo">
-          EMS
-        </div>
-
-        <h2>Admin Panel</h2>
-
-        <nav>
-          <Link href="/admin/dashboard">
-            Dashboard
-          </Link>
-
-          <Link href="/admin/employees">
-            Employees
-          </Link>
-
-          <Link href="/admin/statuses">
-            Statuses
-          </Link>
-
-          <Link href="/admin/reports" className="active">
-            Reports
-          </Link>
-        </nav>
-
-        <div className="sidebar-bottom">
-          <Link href="/">
-            Logout
-          </Link>
-        </div>
-
-      </aside>
+   <AdminSidebar />
 
       {/* Main Content */}
       <section className="dashboard-content">
@@ -180,12 +203,24 @@ for (const item of statuses) {
                 Select Date
               </label>
 
-              <input
-                id="reportDate"
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-              />
+           <input
+              id="reportDate"
+              type="date"
+              value={date}
+              max={new Date().toISOString().split("T")[0]}
+              onChange={(event) => {
+                const selectedDate = event.target.value;
+                const today = new Date()
+                  .toISOString()
+                  .split("T")[0];
+
+                if (selectedDate > today) {
+                  return;
+                }
+
+                setDate(selectedDate);
+              }}
+            />
 
             </div>
 
@@ -196,12 +231,20 @@ for (const item of statuses) {
               </label>
 
               <input
-                id="reportSearch"
-                type="text"
-                placeholder="Search employee, department or status..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+                  id="reportSearch"
+                  type="text"
+                  placeholder="Search employee, department or status..."
+                  value={search}
+                  minLength={2}
+                  maxLength={50}
+                 onChange={(event) => {
+                    const value = event.target.value;
+
+                    if (/^[A-Za-z0-9 ._-]*$/.test(value)) {
+                      setSearch(value.slice(0, 50));
+                    }
+                  }}
+                />
 
             </div>
 
@@ -236,7 +279,7 @@ for (const item of statuses) {
           <div className="reports-table">
 
             <div className="reports-row reports-heading">
-              <span>Employee</span>
+              <span>Employee ID&nbsp;&nbsp;&nbsp;Name</span>
               <span>Department</span>
               <span>Status</span>
               <span>Date</span>
@@ -251,14 +294,14 @@ for (const item of statuses) {
                 >
 
                   <div className="report-employee-name">
+                          <strong className="employee-id">
+                            {report.id}
+                          </strong>
 
-                    <div className="report-avatar">
-                      {report.name.charAt(0)}
-                    </div>
-
-                    <span>{report.name}</span>
-
-                  </div>
+                          <span className="employee-name">
+                            {report.name}
+                          </span>
+                        </div>
 
                   <span>
                     {report.department}

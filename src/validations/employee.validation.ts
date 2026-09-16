@@ -19,11 +19,6 @@ export const validateEmployee = (data: any) => {
         errors.push("Department is required");
     }
 
-    // Position check
-    if (!data.position) {
-        errors.push("Position is required");
-    }
-
     // JoiningDate check
     if (!data.joiningDate) {
         errors.push("JoiningDate is required");
@@ -45,10 +40,6 @@ export const validateUpdateEmployee = (data: any) => {
 
     if (!data.department) {
         errors.push("Department is required");
-    }
-
-    if (!data.position) {
-        errors.push("Position is required");
     }
 
     if (!data.joiningDate) {
